@@ -8,8 +8,20 @@ def grad_err(y, tx, w):
         grad = -tx.T.dot(err) / len(err)
     return grad, err
 
+def grad_logistic(y, tx, w):
+    sigmoid_tx = 1 / (1 + np.exp(-tx.dot(w)))
+    if np.ndim(y) == 0:
+        return tx.T.dot(sigmoid_tx - y)
+    else:
+        return tx.T.dot(sigmoid_tx - y) / len(y)
+
 def mse(err):
     return 0.5 * np.mean(err ** 2)
+
+def logistic_loss(y, tx, w):
+    sigmoid_tx = 1 / (1 + np.exp(-tx.dot(w)))
+    loss = - np.mean(y * np.log(sigmoid_tx) + (1 - y) * np.log(1 - sigmoid_tx))
+    return loss
 
 def mean_squared_error_gd(y, tx, initial_w, max_iters, gamma):
     w = initial_w
@@ -38,5 +50,19 @@ def ridge_regression(y, tx, lambda_):
     w = np.linalg.solve(lhs, tx.T.dot(y))
     return (w, mse(y - tx.dot(w)))
 
+def logistic_regression(y, tx, initial_w, max_iters, gamma):
+    w = initial_w
+    for _ in range(max_iters):
+        grad = grad_logistic(y, tx, w)
+        w = w - gamma * grad
+    loss = logistic_loss(y, tx, w)
+    return (w, loss)
 
-# Logistic Regression part not done as they are not yet covered by lectures  
+def reg_logistic_regression(y, tx, lambda_, initial_w, max_iters, gamma):
+    w = initial_w
+    for _ in range(max_iters):
+        grad = grad_logistic(y, tx, w)
+        w = w - gamma * (grad + 2 * lambda_ * w)
+    loss = logistic_loss(y, tx, w)
+    return (w, loss)    
+
