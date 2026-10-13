@@ -94,7 +94,7 @@ def one_hot(df, col_names, headers):
     This functions takes a dataset, selected column names and the current set of variables (headers)
     that are being maintained (there may be a better way to handle the headers).
     Performs one-hot conversion on selected columns:
-    The original column will be removed and for each unique value of the orginal column,
+    The original column will be removed and for each unique value of the orginal column if it has more than 2 values,
     a new column (named old_column_name+unique_value) will be added to the dataframe
     whose entries are binary (1 if the value matches that unique value and 0 otherwise)
     Args:
@@ -110,9 +110,10 @@ def one_hot(df, col_names, headers):
     new_df = df
     for idx in sorted(col_idx, reverse=True):
         unique_vals = np.unique(df[:, idx])
-        old_header = current_headers[idx]
-        new_headers = [f"{old_header}_{v}" for v in unique_vals]
-        current_headers = np.concatenate((current_headers[:idx], new_headers, current_headers[idx+1:]))
-        bool_cols = np.column_stack([df[:, idx] == val for val in unique_vals])
-        new_df = np.concatenate((new_df[:,:idx], bool_cols,  new_df[:,idx+1:]), axis = 1)
+        if len(unique_vals) > 2:
+            old_header = current_headers[idx]
+            new_headers = [f"{old_header}_{v}" for v in unique_vals]
+            current_headers = np.concatenate((current_headers[:idx], new_headers, current_headers[idx+1:]))
+            bool_cols = np.column_stack([df[:, idx] == val for val in unique_vals])
+            new_df = np.concatenate((new_df[:,:idx], bool_cols,  new_df[:,idx+1:]), axis = 1)
     return new_df, current_headers
