@@ -9,7 +9,7 @@ def grad_err(y, tx, w):
     return grad, err
 
 def grad_logistic(y, tx, w):
-    sigmoid_tx = 1 / (1 + np.exp(-tx.dot(w)))
+    sigmoid_tx = 0.5 * (1 + np.tanh(0.5 * tx.dot(w))) # An experiment to avoid overflow problem
     if np.ndim(y) == 0:
         return tx.T.dot(sigmoid_tx - y)
     else:
@@ -19,7 +19,7 @@ def mse(err):
     return 0.5 * np.mean(err ** 2)
 
 def logistic_loss(y, tx, w):
-    sigmoid_tx = 1 / (1 + np.exp(-tx.dot(w)))
+    sigmoid_tx = 0.5 * (1 + np.tanh(0.5 * tx.dot(w))) # An experiment to avoid overflow problem
     loss = - np.mean(y * np.log(sigmoid_tx) + (1 - y) * np.log(1 - sigmoid_tx))
     return loss
 
@@ -66,3 +66,14 @@ def reg_logistic_regression(y, tx, lambda_, initial_w, max_iters, gamma):
     loss = logistic_loss(y, tx, w)
     return (w, loss)    
 
+def ROC_AUC(y_true, y_score):
+    order = np.argsort(-y_score)                       # highest scores first
+    s_sorted = y_score[order]
+    y_sorted = (y_true[order] == 1)
+    keep = np.r_[np.diff(s_sorted) != 0, True]       
+    true_pos = np.cumsum(y_sorted)[keep]
+    false_pos = np.cumsum(~y_sorted)[keep]
+    n_pos, n_neg = y_sorted.sum(), (~y_sorted).sum()
+    true_pos_rate = np.r_[0, true_pos / n_pos]
+    false_pos_rate = np.r_[0, false_pos / n_neg]
+    return false_pos_rate, true_pos_rate, np.trapezoid(true_pos_rate, false_pos_rate)
