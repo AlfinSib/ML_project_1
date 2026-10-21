@@ -138,6 +138,6 @@ def k_fold_split(N, K, seed=0):
     folds = np.array_split(indices, K)
     for fold_idx in range(K):
         val_idx = folds[fold_idx]
-        train_idx = np.concatenate([folds[i] for i in range(k) if i != fold_idx])
+        train_idx = np.concatenate([folds[i] for i in range(K) if i != fold_idx])
         folds_list.append((train_idx, val_idx))
     return folds_list
