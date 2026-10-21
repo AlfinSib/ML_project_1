@@ -117,3 +117,27 @@ def one_hot(df, col_names, headers):
             bool_cols = np.column_stack([df[:, idx] == val for val in unique_vals])
             new_df = np.concatenate((new_df[:,:idx], bool_cols,  new_df[:,idx+1:]), axis = 1)
     return new_df, current_headers
+
+def k_fold_split(N, K, seed=0):
+    """
+    This function splits the data into K folds, which can be used for cross validation.
+    The data will first be randomly shuffled and then splited.
+
+    Args:
+        N (int): The number of samples 
+        K (int): The number of desired folds
+        seed (int): A random seed that can be set for reproducibility of shuffles, default to 0.
+
+    Returns:
+        list of tuples of np.array: each tuple is a (train_idx, val_idx) pair for the corresponding fold
+    """
+    folds_list = []
+    indices = np.arange(N)
+    rng = np.random.default_rng(seed)
+    rng.shuffle(indices)
+    folds = np.array_split(indices, K)
+    for fold_idx in range(K):
+        val_idx = folds[fold_idx]
+        train_idx = np.concatenate([folds[i] for i in range(k) if i != fold_idx])
+        folds_list.append((train_idx, val_idx))
+    return folds_list
