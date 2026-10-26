@@ -66,3 +66,11 @@ def reg_logistic_regression(y, tx, lambda_, initial_w, max_iters, gamma):
     loss = logistic_loss(y, tx, w)
     return (w, loss)    
 
+def reg_logistic_regression_weighted(y, tx, lambda_, initial_w, max_iters, gamma, w_pos):
+    w = initial_w
+    row_weight = np.where(y == 1, w_pos, 1.0)
+    for _ in range(max_iters):
+        sigmoid_tx = 0.5 * (1 + np.tanh(0.5 * tx.dot(w)))
+        grad = tx.T.dot(row_weight * (sigmoid_tx - y)) / row_weight.sum()
+        w = w - gamma * (grad + 2 * lambda_ * w)
+    return (w, logistic_loss(y, tx, w))
