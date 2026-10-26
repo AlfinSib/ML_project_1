@@ -1,9 +1,20 @@
+from pathlib import Path
 import csv
+
 import numpy as np
+
+
+# ---------------------------------------------------------------------
+# Missing-value encodings used internally during preprocessing
+# ---------------------------------------------------------------------
 
 MISSING_CATEGORY = -1
 NOT_APPLICABLE_CODE = -2
-UNKNOWN_CATEGORY = -3
+
+
+# ---------------------------------------------------------------------
+# Feature selection
+# ---------------------------------------------------------------------
 
 ALL_CALCULATED_FEATURES = [
     # General health
@@ -76,8 +87,9 @@ ALL_CALCULATED_FEATURES = [
     "_RACEGR3",
 ]
 
+
 DROP_FEATURES = [
-    # response-quality variables
+    # Response-quality variables
     "_MISVEGN",
     "_MISFRTN",
     "_FRTRESP",
@@ -88,12 +100,12 @@ DROP_FEATURES = [
     "_VEG23",
     "PAMISS1_",
 
-    # redundant age representations
+    # Redundant age representations
     "_AGEG5YR",
     "_AGE_G",
     "_AGE65YR",
 
-    # redundant / derived features
+    # Redundant / derived features
     "HTIN4",
     "MAXVO2_",
     "PA1MIN_",
@@ -120,84 +132,87 @@ DROP_FEATURES = [
     "_CASTHM1",
 ]
 
+
 CALCULATED_FEATURES = [
     feature
     for feature in ALL_CALCULATED_FEATURES
     if feature not in DROP_FEATURES
 ]
 
-def select_features(x, headers, selected_features):
-    """
-    Select specified columns from a NumPy feature matrix.
 
-    Args:
-        x (np.ndarray):
-            Feature matrix of shape (n_samples, n_features).
-
-        headers (np.ndarray):
-            Names of columns in x.
-
-        selected_features (list[str] or np.ndarray):
-            Feature names to preserve.
-
-    Returns:
-        x_selected (np.ndarray):
-            Matrix containing only selected columns.
-
-        selected_headers (np.ndarray):
-            Names of selected columns in the same order.
-    """
-
-    missing_features = [
-        feature
-        for feature in selected_features
-        if feature not in headers
-    ]
-
-    if missing_features:
-        raise ValueError(
-            f"Unknown features: {missing_features}"
-        )
-
-    indices = np.array([
-        np.where(headers == feature)[0][0]
-        for feature in selected_features
-    ])
-
-    return x[:, indices], headers[indices]
-
-NUMERICAL_FEATURES = ['_AGE80', 'HTM4', 'WTKG3', '_BMI5', '_CHLDCNT', 'DROCDY3_', '_DRNKWEK', '_FRUTSUM', '_VEGESUM', 'METVL11_', 'METVL21_', 'FC60_', 'PADUR1_', 'PADUR2_', 'PAFREQ1_', 'PAFREQ2_', '_MINAC11', '_MINAC21', 'STRFREQ_', 'PAMIN11_', 'PAMIN21_', 'PAVIG11_', 'PAVIG21_']
-ORDINAL_FEATURES = [
-    #"_AGEG5YR",   # increasing age groups
-    #"_AGE65YR",   # 18-64, 65+
-    #"_AGE_G",     # increasing age groups
-    #"_BMI5CAT",   # underweight/normal/overweight/obese
-    "_EDUCAG",    # increasing education attainment
-    "_INCOMG",    # increasing income brackets
-
-    "ACTIN11_",   # none < moderate < vigorous
-    "ACTIN21_",
-
-    "_PACAT1",    # highly active / active / insufficient / inactive
-    "_PA150R2",   # >=150 min / 1-149 / 0
-    "_PA300R2",   # analogous ordered physical-activity levels
+NUMERICAL_FEATURES = [
+    "_AGE80",
+    "HTM4",
+    "WTKG3",
+    "_BMI5",
+    "_CHLDCNT",
+    "DROCDY3_",
+    "_DRNKWEK",
+    "_FRUTSUM",
+    "_VEGESUM",
+    "METVL11_",
+    "METVL21_",
+    "FC60_",
+    "PADUR1_",
+    "PADUR2_",
+    "PAFREQ1_",
+    "PAFREQ2_",
+    "_MINAC11",
+    "_MINAC21",
+    "STRFREQ_",
+    "PAMIN11_",
+    "PAMIN21_",
+    "PAVIG11_",
+    "PAVIG21_",
 ]
-CATEGORICAL_FEATURES = ['_RFHLTH', '_HCVU651', '_RFHYPE5', '_CHOLCHK', '_RFCHOL', '_ASTHMS1', '_SMOKER3', '_RFBING5', '_RFDRHV5', '_TOTINDA', '_LMTACT1', '_LMTWRK1', '_LMTSCL1', '_RFSEAT2', '_RFSEAT3', '_FLSHOT6', '_PNEUMO2', '_AIDTST3', '_RACEGR3']   
+
+
+ORDINAL_FEATURES = [
+    "_EDUCAG",
+    "_INCOMG",
+    "ACTIN11_",
+    "ACTIN21_",
+    "_PACAT1",
+    "_PA150R2",
+    "_PA300R2",
+]
+
+
+CATEGORICAL_FEATURES = [
+    "_RFHLTH",
+    "_HCVU651",
+    "_RFHYPE5",
+    "_CHOLCHK",
+    "_RFCHOL",
+    "_ASTHMS1",
+    "_SMOKER3",
+    "_RFBING5",
+    "_RFDRHV5",
+    "_TOTINDA",
+    "_LMTACT1",
+    "_LMTWRK1",
+    "_LMTSCL1",
+    "_RFSEAT2",
+    "_RFSEAT3",
+    "_FLSHOT6",
+    "_PNEUMO2",
+    "_AIDTST3",
+    "_RACEGR3",
+]
+
+
 STRUCTURAL_MISSING_FEATURES = [
     "_PNEUMO2",
     "_FLSHOT6",
 ]
 
-ORD_NOT_MISSING_9 = [
+
+# These ordinal variables use BLANK rather than code 9 for missingness.
+ORDINAL_BLANK_MISSING = [
     "ACTIN11_",
     "ACTIN21_",
 ]
 
-ORD_MISSING_9 = [
-    feature
-    for feature in ORDINAL_FEATURES
-    if feature not in ORD_NOT_MISSING_9
-]
 
 NUMERICAL_SPECIAL_MISSING = {
     "DROCDY3_": [900],
@@ -207,54 +222,121 @@ NUMERICAL_SPECIAL_MISSING = {
     "_CHLDCNT": [9],
 }
 
-def encode_structural_missing(x, headers):
-    """
-    Encode structural BLANK values as a meaningful category.
 
-    Must be called before replace_missing_codes().
-    """
-    x_clean = x.copy()
-    header_to_idx = {
+# ---------------------------------------------------------------------
+# General helpers
+# ---------------------------------------------------------------------
+
+def _header_to_index(headers):
+    """Return a mapping from feature name to column index."""
+    return {
         feature: idx
         for idx, feature in enumerate(headers)
     }
+
+
+def select_features(x, headers, selected_features):
+    """Select specified columns from a NumPy feature matrix."""
+    header_to_idx = _header_to_index(headers)
+
+    missing_features = [
+        feature
+        for feature in selected_features
+        if feature not in header_to_idx
+    ]
+
+    if missing_features:
+        raise ValueError(
+            f"Unknown features: {missing_features}"
+        )
+
+    indices = np.array([
+        header_to_idx[feature]
+        for feature in selected_features
+    ])
+
+    return x[:, indices], headers[indices]
+
+
+def _validate_feature_partition():
+    """Check that the feature-type lists form an exact partition."""
+    numerical = set(NUMERICAL_FEATURES)
+    ordinal = set(ORDINAL_FEATURES)
+    categorical = set(CATEGORICAL_FEATURES)
+
+    if not numerical.isdisjoint(ordinal):
+        raise ValueError(
+            "NUMERICAL_FEATURES and ORDINAL_FEATURES overlap."
+        )
+
+    if not numerical.isdisjoint(categorical):
+        raise ValueError(
+            "NUMERICAL_FEATURES and CATEGORICAL_FEATURES overlap."
+        )
+
+    if not ordinal.isdisjoint(categorical):
+        raise ValueError(
+            "ORDINAL_FEATURES and CATEGORICAL_FEATURES overlap."
+        )
+
+    typed_features = numerical | ordinal | categorical
+    selected_features = set(CALCULATED_FEATURES)
+
+    if typed_features != selected_features:
+        missing = selected_features - typed_features
+        extra = typed_features - selected_features
+
+        raise ValueError(
+            "Feature-type lists do not match CALCULATED_FEATURES. "
+            f"Missing from type lists: {sorted(missing)}. "
+            f"Unexpected in type lists: {sorted(extra)}."
+        )
+
+
+# ---------------------------------------------------------------------
+# Missing-value handling
+# ---------------------------------------------------------------------
+
+def encode_structural_missing(x, headers):
+    """
+    Encode structural BLANK values as NOT_APPLICABLE_CODE.
+
+    This must be called before replace_missing_codes(), while original
+    blank CSV cells are still represented as NaN.
+    """
+    x_clean = x.copy()
+    header_to_idx = _header_to_index(headers)
 
     for feature in STRUCTURAL_MISSING_FEATURES:
         idx = header_to_idx[feature]
-
-        # Original BLANK values are loaded as NaN
-        x_clean[np.isnan(x_clean[:, idx]), idx] = NOT_APPLICABLE_CODE
+        mask = np.isnan(x_clean[:, idx])
+        x_clean[mask, idx] = NOT_APPLICABLE_CODE
 
     return x_clean
 
+
 def replace_missing_codes(x, headers):
     """
-    Convert explicit BRFSS missing-value codes to np.nan.
+    Convert explicit BRFSS nonresponse/sentinel codes to np.nan.
 
-    Rules:
-    - all categorical features: 9 -> NaN
-    - ordinal features except ORD_NOT_MISSING_9: 9 -> NaN
-    - numerical features: only explicitly listed sentinel values
+    Rules
+    -----
+    - retained categorical features: 9 -> NaN
+    - retained ordinal features: 9 -> NaN except ACTIN11_/ACTIN21_
+    - numerical features: only explicitly configured sentinel values
     """
     x_clean = x.copy()
+    header_to_idx = _header_to_index(headers)
 
-    header_to_idx = {
-        feature: idx
-        for idx, feature in enumerate(headers)
-    }
-
-    # All categorical features use 9 as missing
     for feature in CATEGORICAL_FEATURES:
         idx = header_to_idx[feature]
         x_clean[x_clean[:, idx] == 9, idx] = np.nan
 
-    # Ordinal features: all use 9 except the two blank-missing ones
     for feature in ORDINAL_FEATURES:
-        if feature not in ORD_NOT_MISSING_9:
+        if feature not in ORDINAL_BLANK_MISSING:
             idx = header_to_idx[feature]
             x_clean[x_clean[:, idx] == 9, idx] = np.nan
 
-    # Numerical features with explicit sentinel codes
     for feature, missing_codes in NUMERICAL_SPECIAL_MISSING.items():
         idx = header_to_idx[feature]
 
@@ -263,83 +345,168 @@ def replace_missing_codes(x, headers):
 
     return x_clean
 
-# Numerical features imputation
 
-def numerical_medians(x, headers, numerical_features):
+# ---------------------------------------------------------------------
+# Imputation
+# ---------------------------------------------------------------------
+
+def fit_numerical_imputer(x, headers, numerical_features):
+    """Fit one median per numerical feature."""
+    header_to_idx = _header_to_index(headers)
     medians = {}
+
     for feature in numerical_features:
-        idx = np.where(headers == feature)[0][0]
-        medians[feature] = np.nanmedian(x[:, idx])
+        idx = header_to_idx[feature]
+        median = np.nanmedian(x[:, idx])
+
+        if np.isnan(median):
+            raise ValueError(
+                f"Cannot fit median for '{feature}': "
+                "all training values are missing."
+            )
+
+        medians[feature] = median
+
     return medians
 
+
+# Backwards-compatible name used by older notebooks.
+numerical_medians = fit_numerical_imputer
+
+
+def fit_ordinal_imputer(x, headers, ordinal_features):
+    """Fit one mode per ordinal feature."""
+    header_to_idx = _header_to_index(headers)
+    modes = {}
+
+    for feature in ordinal_features:
+        idx = header_to_idx[feature]
+        column = x[:, idx]
+
+        non_missing = column[~np.isnan(column)]
+
+        if len(non_missing) == 0:
+            raise ValueError(
+                f"Cannot fit mode for '{feature}': "
+                "all training values are missing."
+            )
+
+        values, counts = np.unique(
+            non_missing,
+            return_counts=True,
+        )
+
+        modes[feature] = values[np.argmax(counts)]
+
+    return modes
+
+
 def apply_imputer(x, headers, fill_values):
+    """Apply pre-fitted per-feature fill values."""
     x_out = x.copy()
+    header_to_idx = _header_to_index(headers)
 
     for feature, fill_value in fill_values.items():
-        idx = np.where(headers == feature)[0][0]
-
+        idx = header_to_idx[feature]
         mask = np.isnan(x_out[:, idx])
         x_out[mask, idx] = fill_value
 
     return x_out
 
 
-# Categories extraction from categorical features
-def fit_categorical_encoder(x, headers, categorical_features):
-    """
-    Learn categorical encodings from the training set.
+# ---------------------------------------------------------------------
+# Standardization
+# ---------------------------------------------------------------------
 
-    Returns
-    -------
-    encoder : dict
-        For each feature:
-        - categories: categories that can be encoded
-        - reference: category that will be dropped
+def fit_standardizer(x, headers, features):
+    """Fit mean and standard deviation on training data only."""
+    header_to_idx = _header_to_index(headers)
+    stats = {}
+
+    for feature in features:
+        idx = header_to_idx[feature]
+        column = x[:, idx]
+
+        stats[feature] = (
+            np.mean(column),
+            np.std(column),
+        )
+
+    return stats
+
+
+# Backwards-compatible name used by older notebooks.
+standardization_stats = fit_standardizer
+
+
+def apply_standardization(x, headers, stats):
+    """Apply pre-fitted standardization statistics."""
+    x_out = x.copy()
+    header_to_idx = _header_to_index(headers)
+
+    for feature, (mean, std) in stats.items():
+        idx = header_to_idx[feature]
+
+        if std == 0:
+            x_out[:, idx] = 0
+        else:
+            x_out[:, idx] = (
+                x_out[:, idx] - mean
+            ) / std
+
+    return x_out
+
+
+# ---------------------------------------------------------------------
+# Categorical encoding
+# ---------------------------------------------------------------------
+
+def fit_categorical_encoder(
+    x,
+    headers,
+    categorical_features,
+):
     """
+    Fit a one-hot encoder using categories observed in training only.
+
+    Missing values are represented by MISSING_CATEGORY when present.
+    One regular observed category is dropped as the reference category.
+
+    Important:
+    No artificial UNKNOWN_CATEGORY dummy is created. A category that was
+    not seen during training therefore has no learned coefficient.
+    """
+    header_to_idx = _header_to_index(headers)
     encoder = {}
 
     for feature in categorical_features:
-        idx = np.where(headers == feature)[0][0]
+        idx = header_to_idx[feature]
         column = x[:, idx].copy()
 
-        # Treat missing as an explicit category
         column[np.isnan(column)] = MISSING_CATEGORY
+        categories = np.unique(column)
 
-        observed_categories = np.unique(column)
-
-        # Always support missing and unseen categories,
-        # even if they don't occur in training.
-        categories = np.unique(
-            np.append(
-                observed_categories,
-                [MISSING_CATEGORY, UNKNOWN_CATEGORY]
-            )
-        )
-
-        # Pick a normal observed category as reference
         regular_categories = [
             category
-            for category in observed_categories
+            for category in categories
             if category not in (
                 MISSING_CATEGORY,
-                UNKNOWN_CATEGORY,
                 NOT_APPLICABLE_CODE,
             )
         ]
 
         if len(regular_categories) == 0:
             raise ValueError(
-                f"No regular category found for '{feature}'."
+                f"No regular observed category found for '{feature}'."
             )
-
-        reference = regular_categories[0]
 
         encoder[feature] = {
             "categories": categories,
-            "reference": reference,
+            "reference": regular_categories[0],
         }
 
     return encoder
+
 
 def apply_categorical_encoder(
     x,
@@ -348,49 +515,43 @@ def apply_categorical_encoder(
     encoder,
 ):
     """
-    One-hot encode categorical features using an encoder
-    fitted on the training set.
+    Apply a categorical encoder fitted on the training split.
 
-    Unseen categories are mapped to UNKNOWN_CATEGORY.
-    One reference category per feature is dropped.
+    For each categorical feature:
+    - missing values are converted to MISSING_CATEGORY;
+    - one observed regular category is the reference and is dropped;
+    - only categories observed during training receive dummy columns;
+    - an unseen validation/test category matches no dummy column and is
+      therefore represented by the all-zero/reference encoding.
+
+    This avoids creating training columns that are guaranteed to be zero.
     """
     encoded_columns = []
     encoded_headers = []
-
     categorical_set = set(categorical_features)
 
     for idx, feature in enumerate(headers):
         column = x[:, idx].copy()
 
-        # Non-categorical feature: leave unchanged
         if feature not in categorical_set:
-            encoded_columns.append(column.reshape(-1, 1))
+            encoded_columns.append(
+                column.reshape(-1, 1)
+            )
             encoded_headers.append(feature)
             continue
 
-        # NaN -> explicit missing category
         column[np.isnan(column)] = MISSING_CATEGORY
 
-        feature_categories = encoder[feature]["categories"]
+        categories = encoder[feature]["categories"]
         reference = encoder[feature]["reference"]
 
-        # Categories actually observed during training.
-        known_categories = feature_categories[
-            feature_categories != UNKNOWN_CATEGORY
-        ]
-
-        # Anything not known from training becomes UNKNOWN
-        unseen_mask = ~np.isin(column, known_categories)
-
-        column[unseen_mask] = UNKNOWN_CATEGORY
-
-        # One-hot encode all categories except the reference
-        for category in feature_categories:
-
+        for category in categories:
             if category == reference:
                 continue
 
-            dummy = (column == category).astype(float)
+            dummy = (
+                column == category
+            ).astype(float)
 
             encoded_columns.append(
                 dummy.reshape(-1, 1)
@@ -405,51 +566,69 @@ def apply_categorical_encoder(
         np.array(encoded_headers),
     )
 
-# Ordinal imputation and standardization
-def fit_ordinal_imputer(x, headers, ordinal_features):
-    modes = {}
+REDUNDANT_ENCODED_COLUMNS = [
+    "_LMTWRK1_3",
+    "_LMTSCL1_4",
+    "_RFSEAT3_-1",
+    "_PNEUMO2_-2",
+]
 
-    for feature in ordinal_features:
-        idx = np.where(headers == feature)[0][0]
-        column = x[:, idx]
 
-        non_missing = column[~np.isnan(column)]
+def drop_redundant_encoded_columns(x, headers):
+    keep_mask = ~np.isin(
+        headers,
+        REDUNDANT_ENCODED_COLUMNS,
+    )
 
-        values, counts = np.unique(
-            non_missing,
-            return_counts=True
+    return x[:, keep_mask], headers[keep_mask]
+    
+def find_unseen_categories(
+    x,
+    headers,
+    categorical_features,
+    encoder,
+):
+    """
+    Return categorical values present in x but absent from training.
+
+    This is a diagnostic helper; it does not alter the encoding.
+    """
+    header_to_idx = _header_to_index(headers)
+    unseen = {}
+
+    for feature in categorical_features:
+        idx = header_to_idx[feature]
+        column = x[:, idx].copy()
+
+        column[np.isnan(column)] = MISSING_CATEGORY
+        known_categories = encoder[feature]["categories"]
+
+        unseen_values = np.unique(
+            column[
+                ~np.isin(
+                    column,
+                    known_categories,
+                )
+            ]
         )
 
-        modes[feature] = values[np.argmax(counts)]
+        if len(unseen_values) > 0:
+            unseen[feature] = unseen_values
 
-    return modes
+    return unseen
 
-# Standardization
-def standardization_stats(x, headers, features):
-    stats = {}
-    for feature in features:
-        idx = np.where(headers == feature)[0][0]
-        col = x[:, idx]
-        stats[feature] = (np.mean(col), np.std(col))
-    return stats
-    
-def apply_standardization(x, headers, stats):
-    x_out = x.copy()
-    for feature, (mean, std) in stats.items():
-        idx = np.where(headers == feature)[0][0]
-        if std == 0:
-            x_out[:, idx] = 0
-        else:
-            x_out[:, idx] = (x[:, idx] - mean) / std
-    return x_out
 
-def add_intercept(x):
-    return np.column_stack([
-        np.ones(x.shape[0]),
-        x
-    ])
+# ---------------------------------------------------------------------
+# Train/validation split and intercept
+# ---------------------------------------------------------------------
 
-def stratified_train_val_split(x, y, val_ratio=0.2, seed=42):
+def stratified_train_val_split(
+    x,
+    y,
+    val_ratio=0.2,
+    seed=42,
+):
+    """Create a stratified train/validation split."""
     rng = np.random.default_rng(seed)
 
     train_indices = []
@@ -459,10 +638,16 @@ def stratified_train_val_split(x, y, val_ratio=0.2, seed=42):
         label_indices = np.where(y == label)[0]
         rng.shuffle(label_indices)
 
-        n_val = int(len(label_indices) * val_ratio)
+        n_val = int(
+            len(label_indices) * val_ratio
+        )
 
-        val_indices.extend(label_indices[:n_val])
-        train_indices.extend(label_indices[n_val:])
+        val_indices.extend(
+            label_indices[:n_val]
+        )
+        train_indices.extend(
+            label_indices[n_val:]
+        )
 
     train_indices = np.array(train_indices)
     val_indices = np.array(val_indices)
@@ -478,25 +663,81 @@ def stratified_train_val_split(x, y, val_ratio=0.2, seed=42):
     )
 
 
-def prepare_data(data_dir, val_ratio=0.2, seed=42):
-    # --------------------------------------------------
-    # 1. Read CSV headers
-    # --------------------------------------------------
-    with open(data_dir / "x_train.csv", "r") as f:
+def add_intercept(x):
+    """Prepend a column of ones."""
+    return np.column_stack([
+        np.ones(x.shape[0]),
+        x,
+    ])
+
+
+# ---------------------------------------------------------------------
+# Complete preprocessing pipeline
+# ---------------------------------------------------------------------
+
+def prepare_data(
+    data_dir,
+    val_ratio=0.2,
+    seed=42,
+):
+    """
+    Load and preprocess BRFSS train/test data.
+
+    All learned preprocessing parameters are fitted using the training
+    split only and then reused unchanged on validation and test data.
+
+    Returns
+    -------
+    x_train_final
+    x_val_final
+    x_test_final
+    headers_final
+    y_train_split
+    y_val_split
+    """
+    _validate_feature_partition()
+
+    data_dir = Path(data_dir)
+
+    # --------------------------------------------------------------
+    # 1. Read CSV header and locate retained features
+    # --------------------------------------------------------------
+    with open(
+        data_dir / "x_train.csv",
+        "r",
+        newline="",
+    ) as f:
         reader = csv.reader(f)
         all_headers = np.array(next(reader))
 
-    # Find indices of the features we decided to keep
+    header_to_idx = _header_to_index(
+        all_headers
+    )
+
+    missing_features = [
+        feature
+        for feature in CALCULATED_FEATURES
+        if feature not in header_to_idx
+    ]
+
+    if missing_features:
+        raise ValueError(
+            "Selected features missing from x_train.csv: "
+            f"{missing_features}"
+        )
+
     feature_indices = np.array([
-        np.where(all_headers == feature)[0][0]
+        header_to_idx[feature]
         for feature in CALCULATED_FEATURES
     ])
 
-    headers_calc = all_headers[feature_indices]
+    headers_calc = all_headers[
+        feature_indices
+    ]
 
-    # --------------------------------------------------
-    # 2. Load only selected features
-    # --------------------------------------------------
+    # --------------------------------------------------------------
+    # 2. Load selected features and target
+    # --------------------------------------------------------------
     x_train = np.genfromtxt(
         data_dir / "x_train.csv",
         delimiter=",",
@@ -521,9 +762,9 @@ def prepare_data(data_dir, val_ratio=0.2, seed=42):
         dtype=int,
     )
 
-    # --------------------------------------------------
-    # 3. Preserve structural missingness
-    # --------------------------------------------------
+    # --------------------------------------------------------------
+    # 3. Preserve structural missingness before generic cleaning
+    # --------------------------------------------------------------
     x_train = encode_structural_missing(
         x_train,
         headers_calc,
@@ -534,9 +775,9 @@ def prepare_data(data_dir, val_ratio=0.2, seed=42):
         headers_calc,
     )
 
-    # --------------------------------------------------
-    # 4. Convert explicit missing codes -> NaN
-    # --------------------------------------------------
+    # --------------------------------------------------------------
+    # 4. Convert explicit BRFSS missing codes to NaN
+    # --------------------------------------------------------------
     x_train = replace_missing_codes(
         x_train,
         headers_calc,
@@ -547,9 +788,9 @@ def prepare_data(data_dir, val_ratio=0.2, seed=42):
         headers_calc,
     )
 
-    # --------------------------------------------------
+    # --------------------------------------------------------------
     # 5. Stratified train / validation split
-    # --------------------------------------------------
+    # --------------------------------------------------------------
     (
         x_train_split,
         x_val_split,
@@ -562,71 +803,73 @@ def prepare_data(data_dir, val_ratio=0.2, seed=42):
         seed=seed,
     )
 
-    # --------------------------------------------------
-    # 6. Numerical imputation
-    # Fit on training only
-    # --------------------------------------------------
-    num_medians = numerical_medians(
-        x_train_split,
-        headers_calc,
-        NUMERICAL_FEATURES,
+    # --------------------------------------------------------------
+    # 6. Fit numerical imputation on training only
+    # --------------------------------------------------------------
+    numerical_fill_values = (
+        fit_numerical_imputer(
+            x_train_split,
+            headers_calc,
+            NUMERICAL_FEATURES,
+        )
     )
 
     x_train_proc = apply_imputer(
         x_train_split,
         headers_calc,
-        num_medians,
+        numerical_fill_values,
     )
 
     x_val_proc = apply_imputer(
         x_val_split,
         headers_calc,
-        num_medians,
+        numerical_fill_values,
     )
 
     x_test_proc = apply_imputer(
         x_test,
         headers_calc,
-        num_medians,
+        numerical_fill_values,
     )
 
-    # --------------------------------------------------
-    # 7. Ordinal imputation
-    # Fit on training only
-    # --------------------------------------------------
-    ordinal_modes = fit_ordinal_imputer(
-        x_train_split,
-        headers_calc,
-        ORDINAL_FEATURES,
+    # --------------------------------------------------------------
+    # 7. Fit ordinal imputation on training only
+    # --------------------------------------------------------------
+    ordinal_fill_values = (
+        fit_ordinal_imputer(
+            x_train_split,
+            headers_calc,
+            ORDINAL_FEATURES,
+        )
     )
 
     x_train_proc = apply_imputer(
         x_train_proc,
         headers_calc,
-        ordinal_modes,
+        ordinal_fill_values,
     )
 
     x_val_proc = apply_imputer(
         x_val_proc,
         headers_calc,
-        ordinal_modes,
+        ordinal_fill_values,
     )
 
     x_test_proc = apply_imputer(
         x_test_proc,
         headers_calc,
-        ordinal_modes,
+        ordinal_fill_values,
     )
 
-    # --------------------------------------------------
-    # 8. Standardize numerical + ordinal features
-    # --------------------------------------------------
+    # --------------------------------------------------------------
+    # 8. Fit standardization on training only
+    # --------------------------------------------------------------
     features_to_standardize = (
         NUMERICAL_FEATURES
         + ORDINAL_FEATURES
     )
 
-    stats = standardization_stats(
+    scaler_stats = fit_standardizer(
         x_train_proc,
         headers_calc,
         features_to_standardize,
@@ -635,82 +878,137 @@ def prepare_data(data_dir, val_ratio=0.2, seed=42):
     x_train_proc = apply_standardization(
         x_train_proc,
         headers_calc,
-        stats,
+        scaler_stats,
     )
 
     x_val_proc = apply_standardization(
         x_val_proc,
         headers_calc,
-        stats,
+        scaler_stats,
     )
 
     x_test_proc = apply_standardization(
         x_test_proc,
         headers_calc,
-        stats,
+        scaler_stats,
     )
 
-    # --------------------------------------------------
-    # 9. Fit categorical encoder on training only
-    # --------------------------------------------------
-    categorical_encoder = fit_categorical_encoder(
-        x_train_proc,
-        headers_calc,
-        CATEGORICAL_FEATURES,
+    # --------------------------------------------------------------
+    # 9. Fit categorical encoding on training only
+    # --------------------------------------------------------------
+    categorical_encoder = (
+        fit_categorical_encoder(
+            x_train_proc,
+            headers_calc,
+            CATEGORICAL_FEATURES,
+        )
     )
 
-    x_train_encoded, headers_encoded = apply_categorical_encoder(
+    (
+        x_train_encoded,
+        headers_encoded,
+    ) = apply_categorical_encoder(
         x_train_proc,
         headers_calc,
         CATEGORICAL_FEATURES,
         categorical_encoder,
     )
 
-    x_val_encoded, headers_val = apply_categorical_encoder(
+    (
+        x_val_encoded,
+        headers_val,
+    ) = apply_categorical_encoder(
         x_val_proc,
         headers_calc,
         CATEGORICAL_FEATURES,
         categorical_encoder,
     )
 
-    x_test_encoded, headers_test = apply_categorical_encoder(
+    (
+        x_test_encoded,
+        headers_test,
+    ) = apply_categorical_encoder(
         x_test_proc,
         headers_calc,
         CATEGORICAL_FEATURES,
         categorical_encoder,
     )
 
-    assert np.array_equal(
-        headers_encoded,
+    x_train_encoded, headers_encoded = drop_redundant_encoded_columns(
+    x_train_encoded,
+    headers_encoded,
+    )
+    
+    x_val_encoded, headers_val = drop_redundant_encoded_columns(
+        x_val_encoded,
         headers_val,
     )
-
-    assert np.array_equal(
-        headers_encoded,
+    
+    x_test_encoded, headers_test = drop_redundant_encoded_columns(
+        x_test_encoded,
         headers_test,
     )
 
-    # --------------------------------------------------
+    if not np.array_equal(
+        headers_encoded,
+        headers_val,
+    ):
+        raise ValueError(
+            "Train and validation encoded headers differ."
+        )
+
+    if not np.array_equal(
+        headers_encoded,
+        headers_test,
+    ):
+        raise ValueError(
+            "Train and test encoded headers differ."
+        )
+
+    # --------------------------------------------------------------
     # 10. Add intercept
-    # --------------------------------------------------
-    x_train_final = add_intercept(x_train_encoded)
-    x_val_final = add_intercept(x_val_encoded)
-    x_test_final = add_intercept(x_test_encoded)
+    # --------------------------------------------------------------
+    x_train_final = add_intercept(
+        x_train_encoded
+    )
+
+    x_val_final = add_intercept(
+        x_val_encoded
+    )
+
+    x_test_final = add_intercept(
+        x_test_encoded
+    )
 
     headers_final = np.concatenate([
         np.array(["intercept"]),
         headers_encoded,
     ])
 
-    # --------------------------------------------------
+    # --------------------------------------------------------------
     # 11. Final sanity checks
-    # --------------------------------------------------
-    assert not np.isnan(x_train_final).any()
-    assert not np.isnan(x_val_final).any()
-    assert not np.isnan(x_test_final).any()
+    # --------------------------------------------------------------
+    for name, matrix in [
+        ("training", x_train_final),
+        ("validation", x_val_final),
+        ("test", x_test_final),
+    ]:
+        if not np.all(np.isfinite(matrix)):
+            raise ValueError(
+                f"{name.capitalize()} matrix "
+                "contains NaN or infinite values."
+            )
 
-    assert x_train_final.shape[1] == x_val_final.shape[1]
-    assert x_train_final.shape[1] == x_test_final.shape[1]
+    if (
+        x_train_final.shape[1]
+        != x_val_final.shape[1]
+        or x_train_final.shape[1]
+        != x_test_final.shape[1]
+    ):
+        raise ValueError(
+            "Train, validation, and test matrices "
+            "do not have the same number of columns."
+        )
 
     return (
         x_train_final,
