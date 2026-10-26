@@ -3,20 +3,13 @@
 Includes median imputation, NaN indicators, quantile clipping,
 one-hot encoding of nominal columns, and standardisation.
 
-Usage:
-    from learned_preprocess import fit, transform
-
-    params = fit(x_tr_clean, col_names)
-    X_tr, feat_names = transform(x_tr_clean, params)
-    X_va, _          = transform(x_va_clean, params)
 """
 import numpy as np
 
-# Nominal columns: numeric code has no order → one-hot encode
+
 DEFAULT_ONEHOT = [
-    "_STATE", "_RACE", "_PRACE1", "_MRACE1", "_CRACE1", "_RACEGR3",
-    "_ASTHMS1", "_CHOLCHK", "_PAREC1", "_LMTACT1", "_LMTWRK1",
-    "_LMTSCL1", "MARITAL", "EMPLOY1", "RENTHOM1",
+    "_RACE", "_ASTHMS1", "_CHOLCHK",
+    "_LMTACT1", "_LMTWRK1", "_LMTSCL1",
 ]
 
 
@@ -45,18 +38,8 @@ def _build(x, p, dtype):
 
 def fit(x, names, onehot=DEFAULT_ONEHOT, max_nan=0.8, flag_nan=0.05,
         clip_q=(0.5, 99.5), min_unique_clip=10, dtype=np.float32):
-    """Learn all statistics from x (already stateless-cleaned).
-
-    Parameters
-    ----------
-    x         : array after stateless_clean
-    names     : column names matching x
-    max_nan   : drop columns with more NaN than this
-    flag_nan  : add _isnan indicator for columns with NaN rate >= this
-    clip_q    : (low, high) percentiles for clipping continuous columns
-    onehot    : nominal column names to one-hot encode
-    dtype     : storage dtype for the output matrix
-    """
+    """Learn statistics from training data for later transformation.
+    Returns a dict of parameters to pass to transform().""" 
     names = list(names)
     ix = {n: j for j, n in enumerate(names)}
     p = {"in_names": names, "onehot": {}, "num": [], "median": {},
@@ -95,11 +78,6 @@ def fit(x, names, onehot=DEFAULT_ONEHOT, max_nan=0.8, flag_nan=0.05,
 
 def transform(x, p):
     """Apply frozen statistics. Returns (X with bias column at position 0, names).
-
-    Parameters
-    ----------
-    x : array after stateless_clean, same columns as used in fit
-    p : params dict returned by fit
     """
     if x.shape[1] != len(p["in_names"]):
         raise ValueError(f"x has {x.shape[1]} columns, fit saw {len(p['in_names'])}")
