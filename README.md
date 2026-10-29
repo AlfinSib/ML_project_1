@@ -22,8 +22,8 @@ attack or coronary heart disease) on the BRFSS 2015 survey dataset
 
 ### Quickstart
 
-Open `run.ipynb` in Jupyter and **Run All** (the notebook is linear
-and self-contained).
+Open `run.ipynb` in Jupyter and **Run All** (the notebook is linear and self-contained)
+
 ---
 
 ## Data preparation (`preprocessing.py`)
