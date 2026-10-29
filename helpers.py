@@ -70,3 +70,74 @@ def create_csv_submission(ids, y_pred, name):
         writer.writeheader()
         for r1, r2 in zip(ids, y_pred):
             writer.writerow({"Id": int(r1), "Prediction": int(r2)})
+
+
+def read_header(data_path):
+    """
+    This function read the headers (variable names) of the data.
+    N.B. The Id column is excluded to match the given helper functions above.
+    Args:
+        data_path (str): datafolder path
+
+    Returns:
+        header (np.array): header of data
+    """    
+    with open(data_path, "r", newline="") as f:
+        headers = next(csv.reader(f), [])
+    
+    headers = np.array(headers)
+    return headers[1:]
+
+
+def one_hot(df, col_names, headers):
+    """
+    This functions takes a dataset, selected column names and the current set of variables (headers)
+    that are being maintained (there may be a better way to handle the headers).
+    Performs one-hot conversion on selected columns:
+    The original column will be removed and for each unique value of the orginal column if it has more than 2 values,
+    a new column (named old_column_name+unique_value) will be added to the dataframe
+    whose entries are binary (1 if the value matches that unique value and 0 otherwise)
+    Args:
+        df (np.array): data frame 
+        col_names: the names of columns on which one-hot conversion will be performed
+        headers: Current set of variables inside df
+    Returns:
+        new_df (np.array): data frame which one-hot conversion done on selected columms
+        current_headers (np.array): new set of variables
+    """
+    col_idx = np.where(np.isin(headers, col_names))[0]
+    current_headers = headers
+    new_df = df
+    for idx in sorted(col_idx, reverse=True):
+        unique_vals = np.unique(df[:, idx])
+        if len(unique_vals) > 2:
+            old_header = current_headers[idx]
+            new_headers = [f"{old_header}_{v}" for v in unique_vals]
+            current_headers = np.concatenate((current_headers[:idx], new_headers, current_headers[idx+1:]))
+            bool_cols = np.column_stack([df[:, idx] == val for val in unique_vals])
+            new_df = np.concatenate((new_df[:,:idx], bool_cols,  new_df[:,idx+1:]), axis = 1)
+    return new_df, current_headers
+
+def k_fold_split(N, K, seed=0):
+    """
+    This function splits the data into K folds, which can be used for cross validation.
+    The data will first be randomly shuffled and then splited.
+
+    Args:
+        N (int): The number of samples 
+        K (int): The number of desired folds
+        seed (int): A random seed that can be set for reproducibility of shuffles, default to 0.
+
+    Returns:
+        list of tuples of np.array: each tuple is a (train_idx, val_idx) pair for the corresponding fold
+    """
+    folds_list = []
+    indices = np.arange(N)
+    rng = np.random.default_rng(seed)
+    rng.shuffle(indices)
+    folds = np.array_split(indices, K)
+    for fold_idx in range(K):
+        val_idx = folds[fold_idx]
+        train_idx = np.concatenate([folds[i] for i in range(K) if i != fold_idx])
+        folds_list.append((train_idx, val_idx))
+    return folds_list
