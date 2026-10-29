@@ -16,7 +16,7 @@ attack or coronary heart disease) on the BRFSS 2015 survey dataset
 | `diagnostics.py` | `Diagnostics.evaluate / report / cross_validate` — metrics and the CV loop |
 | `diagstat.py` | metric primitives: tie-correct `ROC_AUC`, `F1_score` |
 | `workflow_notebook.ipynb` | experiment log: EDA, cleaning audit, model selection history (narrative, in notebook order) |
-| `run.ipynb` | the final single-pass pipeline used to produce statistics and plots for the report: load → fold cache → grid search → pooled OOF → figures → threshold → submission |
+| `run.ipynb` | the final single-pass pipeline used to produce statistics and plots for the report: load → fold cache → hyperparameter tune → figures → threshold → submission |
 | `data/dataset/` | `x_train.csv`, `y_train.csv`, `x_test.csv` (321 feature columns each) |
 | `data/codebook15_full.txt` | BRFSS 2015 codebook — the ground truth for every sentinel value and variable meaning |
 
@@ -130,7 +130,7 @@ Protocol (5-fold, deterministic seed):
 ### Model
 
 Regularised logistic regression trained by gradient descent
-(`implementations.py`), with a numerically stable tanh-form sigmoid.
+(`implementations.py`).
 Three variants are selected by hyperparameters:
 
 | variant | parameters |
